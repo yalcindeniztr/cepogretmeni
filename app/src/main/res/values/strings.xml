@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Cep Öğretmeni - Maarif Tarih</string>
+    <string name="biometric_title">Maarif Tarih Asistanı Kilidi</string>
+    <string name="biometric_subtitle">Şifreli öğrenci kayıtlarına erişim için kimliğinizi doğrulayın</string>
+</resources>
