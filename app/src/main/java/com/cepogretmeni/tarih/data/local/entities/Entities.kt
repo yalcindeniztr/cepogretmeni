@@ -7,14 +7,14 @@ import androidx.room.PrimaryKey
 data class LessonPlanEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val topicTitle: String,
-    val themeName: String, // Maarif Modeli Tema Adı
+    val themeName: String,
     val gradeLevel: Int,
     val durationMinutes: Int,
-    val primarySkills: String, // JSON serialized List<HistorySkill>
-    val coreValues: String,    // JSON serialized List<CoreValue>
-    val motivationHook: String, // Güdüleme / Tarihsel fıkra, şiir veya beyit
-    val teachingSteps: String,  // Adım adım ders akışı
-    val assessmentMethods: String, // Değerlendirme stratejileri
+    val primarySkills: String,
+    val coreValues: String,
+    val motivationHook: String,
+    val teachingSteps: String,
+    val assessmentMethods: String,
     val createdAtTimestamp: Long = System.currentTimeMillis()
 )
 
@@ -25,14 +25,14 @@ data class SelfEvaluationEntity(
     val studentNumber: String,
     val gradeLevel: Int,
     val topicTitle: String,
-    val inquirySkillLevel: Int,      // 1: Geliştirilmeli, 2: Yetkin, 3: İleri Düzey
+    val inquirySkillLevel: Int,
     val evidenceSkillLevel: Int,
     val chronologySkillLevel: Int,
     val empathySkillLevel: Int,
     val spatialSkillLevel: Int,
-    val selectedCoreValues: String,  // Virgülle ayrılmış değerler
-    val reflectionNotes: String,     // Öğrenci yansıtıcı düşünme notu
-    val totalCompetencyScore: Float, // % hesaplanmış genel yetkinlik skoru
+    val selectedCoreValues: String,
+    val reflectionNotes: String,
+    val totalCompetencyScore: Float,
     val createdAtTimestamp: Long = System.currentTimeMillis()
 )
 
@@ -43,4 +43,18 @@ data class TeacherNoteEntity(
     val content: String,
     val isEncrypted: Boolean = true,
     val updatedAtTimestamp: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "saved_documents")
+data class SavedDocumentEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val title: String,
+    val documentType: String, // "GÜNLÜK DERS PLANI", "YILLIK PLAN", "ZÜMRE TUTANAĞI", "SINAV & RUBRİK"
+    val gradeLevel: Int,
+    val contentText: String,
+    val schoolName: String,
+    val teacherName: String,
+    val principalName: String,
+    val createdAtFormatted: String,
+    val createdAtTimestamp: Long = System.currentTimeMillis()
 )

@@ -1,10 +1,12 @@
 package com.cepogretmeni.tarih.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.cepogretmeni.tarih.data.local.entities.LessonPlanEntity
+import com.cepogretmeni.tarih.data.local.entities.SavedDocumentEntity
 import com.cepogretmeni.tarih.data.local.entities.SelfEvaluationEntity
 import com.cepogretmeni.tarih.data.local.entities.TeacherNoteEntity
 import kotlinx.coroutines.flow.Flow
@@ -19,9 +21,6 @@ interface HistoryDao {
     @Query("SELECT * FROM lesson_plans ORDER BY createdAtTimestamp DESC")
     fun getAllLessonPlans(): Flow<List<LessonPlanEntity>>
 
-    @Query("SELECT * FROM lesson_plans WHERE id = :id")
-    suspend fun getLessonPlanById(id: Long): LessonPlanEntity?
-
     // === Öz Değerlendirme Formları (Öğrenci Gelişim Takibi) ===
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSelfEvaluation(evaluation: SelfEvaluationEntity): Long
@@ -29,8 +28,15 @@ interface HistoryDao {
     @Query("SELECT * FROM self_evaluations ORDER BY createdAtTimestamp DESC")
     fun getAllSelfEvaluations(): Flow<List<SelfEvaluationEntity>>
 
-    @Query("SELECT * FROM self_evaluations WHERE studentNumber = :studentNumber")
-    fun getEvaluationsByStudentNumber(studentNumber: String): Flow<List<SelfEvaluationEntity>>
+    // === Uygulama İçi Kaydedilen Belgeler (Planlar, Sınavlar, Zümreler) ===
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSavedDocument(doc: SavedDocumentEntity): Long
+
+    @Query("SELECT * FROM saved_documents ORDER BY createdAtTimestamp DESC")
+    fun getAllSavedDocuments(): Flow<List<SavedDocumentEntity>>
+
+    @Delete
+    suspend fun deleteSavedDocument(doc: SavedDocumentEntity)
 
     // === Öğretmen Notları ===
     @Insert(onConflict = OnConflictStrategy.REPLACE)

@@ -6,6 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.cepogretmeni.tarih.data.local.dao.HistoryDao
 import com.cepogretmeni.tarih.data.local.entities.LessonPlanEntity
+import com.cepogretmeni.tarih.data.local.entities.SavedDocumentEntity
 import com.cepogretmeni.tarih.data.local.entities.SelfEvaluationEntity
 import com.cepogretmeni.tarih.data.local.entities.TeacherNoteEntity
 import net.sqlcipher.database.SQLiteDatabase
@@ -19,9 +20,10 @@ import net.sqlcipher.database.SupportFactory
     entities = [
         LessonPlanEntity::class,
         SelfEvaluationEntity::class,
-        TeacherNoteEntity::class
+        TeacherNoteEntity::class,
+        SavedDocumentEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -33,9 +35,8 @@ abstract class AppDatabase : RoomDatabase() {
         private var INSTANCE: AppDatabase? = null
         private const val DB_NAME = "maarif_tarih_secure.db"
 
-        fun getDatabase(context: Context, passphraseBytes: ByteArray): AppDatabase {
+        fun getDatabase(context: Context, passphraseBytes: ByteArray = "MaarifTarihSecretKey2026!".toByteArray()): AppDatabase {
             return INSTANCE ?: synchronized(this) {
-                // SQLCipher native kütüphanesini yükle
                 SQLiteDatabase.loadLibs(context)
                 val factory = SupportFactory(passphraseBytes)
 

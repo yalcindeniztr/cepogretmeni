@@ -1,7 +1,6 @@
 package com.cepogretmeni.tarih.presentation.assistant
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,27 +11,26 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cepogretmeni.tarih.data.curriculum.MaarifCurriculumData
+import com.cepogretmeni.tarih.domain.model.TeacherProfile
+import com.cepogretmeni.tarih.presentation.profile.TeacherProfileDialog
 
 data class ChatMessage(
     val id: String,
     val sender: MessageSender,
     val text: String,
     val actionType: AssistantActionType? = null,
+    val isSavedToApp: Boolean = false,
     val timestamp: Long = System.currentTimeMillis()
 )
 
@@ -43,20 +41,24 @@ enum class AssistantActionType {
 }
 
 /**
- * Maarif Modeli Gerçek Zamanlı Konuşan ve Cevap Veren Tarih Öğretmeni Asistanı
+ * Maarif Modeli Tarih Öğretmeni Asistanı
+ * Sessiz ve profesyonel mod: Yalnızca kullanıcının talep ettiği belgeleri hazırlar,
+ * PDF, Word (.docx) ve Uygulama İçi Kaydetme desteği sunar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RealtimeTeacherAssistantScreen(
     selectedGrade: Int = 9,
+    profile: TeacherProfile,
+    onProfileChange: (TeacherProfile) -> Unit = {},
     onGradeChange: (Int) -> Unit = {},
     onExportPdfAction: (AssistantActionType, Int) -> Unit = { _, _ -> },
-    onVoiceSpeak: (String) -> Unit = {},
-    onStartListening: () -> Unit = {},
-    onStopListening: () -> Unit = {}
+    onExportWordAction: (AssistantActionType, Int) -> Unit = { _, _ -> },
+    onSaveToAppAction: (AssistantActionType, Int, String) -> Unit = { _, _, _ -> }
 ) {
-    var isListening by remember { mutableStateOf(false) }
     var inputText by remember { mutableStateOf("") }
+    var showProfileDialog by remember { mutableStateOf(false) }
+    var savedSuccessMessage by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
 
     val messages = remember {
@@ -64,22 +66,21 @@ fun RealtimeTeacherAssistantScreen(
             ChatMessage(
                 id = "1",
                 sender = MessageSender.TEACHER_AI,
-                text = "Selamlar kıymetli meslektaşım ve sevgili öğrencim! Ben Türkiye Yüzyılı Maarif Modeli Tarih Öğretmeniniz. Müfredat planlamasından sınıf geçme yönetmeliğine, nükte ve beyitlerle zenginleştirilmiş canlı ders anlatımlarından MEB senaryolu soru ve rubrik üretimine kadar her an yanınızdayım. Hangi sınıf düzeyi veya konu üzerinde çalışmak istersiniz?"
+                text = "Hoş geldiniz kıymetli öğretmenim. Türkiye Yüzyılı Maarif Modeli Tarih Dersi planlama motorunuz hazırdır. Haftalık ders saati sayısına göre çoklu saatli günlük planlar, 36 haftalık yıllık planlar, MEB senaryolu açık uçlu sınav ve rubrikler ile zümre tutanaklarını hazırlayabilir, PDF veya Word (.docx) olarak anında indirebilir ya da cihazınıza şifreli kaydedebilirsiniz."
             )
         )
     }
 
-    // Mikrofon animasyonu
-    val infiniteTransition = rememberInfiniteTransition(label = "micPulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = if (isListening) 1.25f else 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse"
-    )
+    if (showProfileDialog) {
+        TeacherProfileDialog(
+            currentProfile = profile,
+            onDismiss = { showProfileDialog = false },
+            onSaveProfile = { newProfile ->
+                onProfileChange(newProfile)
+                showProfileDialog = false
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -89,27 +90,27 @@ fun RealtimeTeacherAssistantScreen(
                         Surface(
                             shape = CircleShape,
                             color = Color(0xFF2563EB),
-                            modifier = Modifier.size(38.dp)
+                            modifier = Modifier.size(36.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    imageVector = Icons.Default.RecordVoiceOver,
+                                    imageVector = Icons.Default.MenuBook,
                                     contentDescription = null,
                                     tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
-                                text = "Tarih Cep Öğretmeni",
+                                text = "Maarif Tarih Asistanı",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
+                                fontSize = 15.sp,
                                 color = Color.White
                             )
                             Text(
-                                text = "Maarif Modeli • $selectedGrade. Sınıf",
+                                text = "${profile.schoolName} • $selectedGrade. Sınıf",
                                 fontSize = 11.sp,
                                 color = Color(0xFF38BDF8)
                             )
@@ -117,19 +118,17 @@ fun RealtimeTeacherAssistantScreen(
                     }
                 },
                 actions = {
-                    // Sınıf Seçici Menü
+                    // Sınıf Seçici
                     GradeDropdownMenu(
                         currentGrade = selectedGrade,
                         onSelectGrade = onGradeChange
                     )
 
-                    IconButton(onClick = {
-                        val latestAiMsg = messages.lastOrNull { it.sender == MessageSender.TEACHER_AI }?.text
-                        latestAiMsg?.let { onVoiceSpeak(it) }
-                    }) {
+                    // Okul & Öğretmen Profil Ayarları Butonu
+                    IconButton(onClick = { showProfileDialog = true }) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                            contentDescription = "Sesli Oku",
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Okul/Öğretmen Bilgileri",
                             tint = Color(0xFFFBBF24)
                         )
                     }
@@ -148,43 +147,46 @@ fun RealtimeTeacherAssistantScreen(
         ) {
             // Hızlı Eylem Çubuğu
             QuickActionsBar(
+                weeklyHours = profile.defaultWeeklyHours,
                 onSelectAction = { actionType ->
                     val response = when (actionType) {
-                        AssistantActionType.STORY_NARRATIVE -> {
-                            val story = MaarifCurriculumData.getStoryNarrativeForGrade(selectedGrade)
-                            """
-                                🎙️ ${selectedGrade}. Sınıf Canlı Ders Anlatımı: ${story.topicTitle}
-                                
-                                🏛️ Dönemin Zihniyeti (Mantalite):
-                                ${story.historicalMindsetAnalysis}
-                                
-                                📖 Hikâye & Olay Akışı:
-                                ${story.narrativeStory}
-                                
-                                ${story.historicalAnecdoteOrHumor}
-                                
-                                ${story.concludingCoupletOrPoem}
-                                
-                                💡 Eleştirel Soru:
-                                ${story.criticalThinkingPrompt}
-                            """.trimIndent()
-                        }
                         AssistantActionType.DAILY_PLAN -> {
-                            "Hemen $selectedGrade. Sınıf Maarif Modeli Günlük Ders Planını hazırladım. 5E modeli (Güdüleme nükte, istasyon keşfetme, derinleştirme ve çıkış kartı) ve farklılaştırılmış eğitim notları hazır! Aşağıdaki butondan A4 PDF çıktısını alabilirsiniz."
+                            val plan = MaarifCurriculumData.generateMultiHourDailyPlan(selectedGrade, profile.defaultWeeklyHours, profile)
+                            buildString {
+                                append("📋 **${plan.gradeLevel}. SINIF GÜNLÜK DERS PLANI (${plan.weeklyHoursCount} DERS SAATİ / HAFTALIK)**\n")
+                                append("🏫 **Okul:** ${profile.schoolName}  |  **Öğretmen:** ${profile.teacherName}\n")
+                                append("🎯 **Tema:** ${plan.themeName}\n")
+                                append("📖 **Konu:** ${plan.topicTitle}\n\n")
+                                plan.lessonHours.forEach { h ->
+                                    append("📌 **${h.hourNumber}. DERS SAATİ:** ${h.hourTitle}\n")
+                                    append("• **Öğrenme Çıktısı:** ${h.learningOutcomes}\n")
+                                    append("• **Güdüleme / Nükte:** ${h.hookAndMotivation}\n")
+                                    append("• **İşleniş:** ${h.instructionalProcess}\n")
+                                    append("• **Çıkış Kartı:** ${h.evaluationAndExitTicket}\n\n")
+                                }
+                                append("✨ **Farklılaştırılmış Öğretim:** ${plan.differentiatedInstruction}\n")
+                                append("✍️ **İmzalar:** ${profile.teacherName} (Tarih Öğretmeni)  •  ${profile.principalName} (Okul Müdürü)")
+                            }
                         }
                         AssistantActionType.ANNUAL_PLAN -> {
-                            "2026-2027 Maarif Modeli $selectedGrade. Sınıf Tarih Dersi Yıllık Planı (öğrenme çıktıları, süreç bileşenleri ve kök değerler) oluşturuldu. Yatay A4 formatında yazdırmaya hazır."
+                            "📅 **${selectedGrade}. SINIF MAARİF MODELİ YILLIK PLANI (36 HAFTALIK)**\n\nKurum: ${profile.schoolName}\nTarih Öğretmeni: ${profile.teacherName}  |  Okul Müdürü: ${profile.principalName}\n\nÖğrenme çıktıları, süreç bileşenleri, alan becerileri ve kök değer dağılımı yatay A4 PDF ve Word olarak hazırlanmıştır."
                         }
                         AssistantActionType.ZUMRE_RECORD -> {
-                            "1. Dönem Başı Tarih Zümre Öğretmenler Kurulu Kararları ve Tutanağı, Ortaöğretim Kurumları Yönetmeliği Madde 45 ve 56 esaslarına göre hazırlandı."
+                            val zumre = MaarifCurriculumData.getSampleZumreMeetingRecord()
+                            "📑 **${profile.schoolName.uppercase()} TARİH ZÜMRE ÖĞRETMENLER KURULU TUTANAĞI**\n\nToplantı Tarihi: ${zumre.meetingDate}\nZümre Başkanı: ${profile.teacherName}  |  Okul Müdürü: ${profile.principalName}\n\nMaarif Modeli ve Ortaöğretim Kurumları Yönetmeliği Madde 45, 50, 56 sınıf geçme esaslarına göre tamamlanmıştır."
                         }
                         AssistantActionType.EXAM_PAPER -> {
-                            "MEB Senaryo 1 konu soru dağılım tablosuna uygun $selectedGrade. Sınıf açık uçlu yazılı sınav kağıdı ve ayrıntılı Dereceli Puanlama Anahtarı (Rubrik) hazırlandı."
+                            "🎯 **${profile.schoolName.uppercase()} ${selectedGrade}. SINIF 1. DÖNEM 1. ORTAK YAZILI SINAVI & RUBRİK**\n\nMEB Senaryo 1 konu soru dağılım tablosuna tam uyumlu 4 adet yeni nesil açık uçlu soru ve ayrıntılı Dereceli Puanlama Anahtarı (Rubrik) hazırlanmıştır."
+                        }
+                        AssistantActionType.STORY_NARRATIVE -> {
+                            val story = MaarifCurriculumData.getStoryNarrativeForGrade(selectedGrade)
+                            "📖 **${selectedGrade}. SINIF DERS ANLATIM ÖZETİ:** ${story.topicTitle}\n\n🏛️ **Zihniyet:** ${story.historicalMindsetAnalysis}\n\n${story.narrativeStory}\n\n${story.historicalAnecdoteOrHumor}\n\n${story.concludingCoupletOrPoem}"
                         }
                         AssistantActionType.REGULATION_GUIDE -> {
-                            "MEB Sınıf Geçme Yönetmeliği: Yıl sonu ortalaması en az 50 olanlar doğrudan geçer. En fazla 3 zayıfı olan sorumlu geçer. Toplam sorumlu ders sayısı 6'yı geçemez."
+                            "⚖️ **MEB ORTAÖĞRETİM KURUMLARI SINIF GEÇME YÖNETMELİĞİ:**\n\n• Yıl sonu ortalaması en az 50 olan öğrenci doğrudan sınıf geçer.\n• En fazla 3 dersten başarısız olan sorumlu geçer.\n• Alt sınıflar dahil toplam sorumlu ders sayısı 6'yı aşamaz.\n• Yazılı sınavlar MEB senaryo tablolarına göre açık uçlu yapılmak zorundadır."
                         }
                     }
+
                     messages.add(
                         ChatMessage(
                             id = System.currentTimeMillis().toString(),
@@ -193,9 +195,33 @@ fun RealtimeTeacherAssistantScreen(
                             actionType = actionType
                         )
                     )
-                    onVoiceSpeak(response)
                 }
             )
+
+            // Başarılı Kayıt Bildirimi
+            AnimatedVisibility(visible = savedSuccessMessage != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF065F46)),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF34D399), modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = savedSuccessMessage ?: "",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
 
             // Mesaj Akışı
             LazyColumn(
@@ -211,12 +237,16 @@ fun RealtimeTeacherAssistantScreen(
                         message = msg,
                         selectedGrade = selectedGrade,
                         onExportPdf = { action -> onExportPdfAction(action, selectedGrade) },
-                        onSpeakText = { onVoiceSpeak(msg.text) }
+                        onExportWord = { action -> onExportWordAction(action, selectedGrade) },
+                        onSaveToApp = { action, text ->
+                            onSaveToAppAction(action, selectedGrade, text)
+                            savedSuccessMessage = "Belge uygulama içine güvenle kaydedildi. 'Kayıtlı Belgelerim' sekmesinden dilediğiniz zaman erişebilirsiniz."
+                        }
                     )
                 }
             }
 
-            // Alt Giriş ve Mikrofon Çubuğu
+            // Alt Metin Giriş Çubuğu
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color(0xFF1E293B),
@@ -231,7 +261,7 @@ fun RealtimeTeacherAssistantScreen(
                     OutlinedTextField(
                         value = inputText,
                         onValueChange = { inputText = it },
-                        placeholder = { Text("Sorunuzu yazın veya mikrofona dokunun...", fontSize = 13.sp, color = Color(0xFF64748B)) },
+                        placeholder = { Text("Hazırlatmak istediğiniz konuyu veya planı yazın...", fontSize = 13.sp, color = Color(0xFF64748B)) },
                         modifier = Modifier
                             .weight(1f)
                             .height(52.dp),
@@ -246,35 +276,6 @@ fun RealtimeTeacherAssistantScreen(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Mikrofon Butonu
-                    IconButton(
-                        onClick = {
-                            if (isListening) {
-                                isListening = false
-                                onStopListening()
-                            } else {
-                                isListening = true
-                                onStartListening()
-                            }
-                        },
-                        modifier = Modifier
-                            .scale(if (isListening) pulseScale else 1f)
-                            .size(46.dp)
-                            .background(
-                                color = if (isListening) Color(0xFFDC2626) else Color(0xFF2563EB),
-                                shape = CircleShape
-                            )
-                    ) {
-                        Icon(
-                            imageVector = if (isListening) Icons.Default.MicOff else Icons.Default.Mic,
-                            contentDescription = "Mikrofon",
-                            tint = Color.White
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(6.dp))
-
-                    // Gönder Butonu
                     IconButton(
                         onClick = {
                             if (inputText.isNotBlank()) {
@@ -282,9 +283,15 @@ fun RealtimeTeacherAssistantScreen(
                                 messages.add(ChatMessage(id = System.currentTimeMillis().toString(), sender = MessageSender.USER, text = userQuery))
                                 inputText = ""
 
-                                val aiReply = generateMaarifHistoryResponse(userQuery, selectedGrade)
-                                messages.add(ChatMessage(id = (System.currentTimeMillis() + 1).toString(), sender = MessageSender.TEACHER_AI, text = aiReply))
-                                onVoiceSpeak(aiReply)
+                                val aiReply = generateMaarifCustomPlanResponse(userQuery, selectedGrade, profile)
+                                messages.add(
+                                    ChatMessage(
+                                        id = (System.currentTimeMillis() + 1).toString(),
+                                        sender = MessageSender.TEACHER_AI,
+                                        text = aiReply,
+                                        actionType = AssistantActionType.DAILY_PLAN
+                                    )
+                                )
                             }
                         },
                         modifier = Modifier
@@ -340,11 +347,11 @@ private fun GradeDropdownMenu(
     }
 }
 
-/**
- * Hızlı Eylemler Yatay Çubuğu
- */
 @Composable
-private fun QuickActionsBar(onSelectAction: (AssistantActionType) -> Unit) {
+private fun QuickActionsBar(
+    weeklyHours: Int,
+    onSelectAction: (AssistantActionType) -> Unit
+) {
     LazyRow(
         modifier = Modifier
             .fillMaxWidth()
@@ -354,14 +361,7 @@ private fun QuickActionsBar(onSelectAction: (AssistantActionType) -> Unit) {
     ) {
         item {
             ActionChip(
-                title = "🎙️ Canlı Ders Anlatımı",
-                color = Color(0xFF8B5CF6),
-                onClick = { onSelectAction(AssistantActionType.STORY_NARRATIVE) }
-            )
-        }
-        item {
-            ActionChip(
-                title = "📝 Günlük Plan (5E)",
+                title = "📝 Günlük Plan ($weeklyHours Saat)",
                 color = Color(0xFF2563EB),
                 onClick = { onSelectAction(AssistantActionType.DAILY_PLAN) }
             )
@@ -420,7 +420,8 @@ private fun ChatBubbleItem(
     message: ChatMessage,
     selectedGrade: Int,
     onExportPdf: (AssistantActionType) -> Unit,
-    onSpeakText: () -> Unit
+    onExportWord: (AssistantActionType) -> Unit,
+    onSaveToApp: (AssistantActionType, String) -> Unit
 ) {
     val isAi = message.sender == MessageSender.TEACHER_AI
 
@@ -439,48 +440,70 @@ private fun ChatBubbleItem(
                 containerColor = if (isAi) Color(0xFF1E293B) else Color(0xFF2563EB)
             ),
             modifier = Modifier
-                .widthIn(max = 340.dp)
+                .widthIn(max = 350.dp)
                 .shadow(6.dp, RoundedCornerShape(16.dp))
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
                 if (isAi) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Tarih Öğretmeni • $selectedGrade. Sınıf",
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF38BDF8),
-                            fontSize = 12.sp
-                        )
-                        IconButton(onClick = onSpeakText, modifier = Modifier.size(24.dp)) {
-                            Icon(imageVector = Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, tint = Color(0xFFFBBF24), modifier = Modifier.size(16.dp))
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Maarif Modeli Asistanı • $selectedGrade. Sınıf",
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF38BDF8),
+                        fontSize = 12.sp
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
 
                 Text(
                     text = message.text,
                     color = Color.White,
-                    fontSize = 13.5.sp,
-                    lineHeight = 19.sp
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp
                 )
 
-                // PDF Çıktı Butonu
+                // PDF, WORD ve UYGULAMAYA KAYDET BUTONLARI
                 message.actionType?.let { action ->
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Button(
-                        onClick = { onExportPdf(action) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "Resmî MEB A4 PDF'ini İndir / Yazdır", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Button(
+                            onClick = { onExportPdf(action) },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(text = "PDF", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = { onExportWord(action) },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Description, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(text = "Word", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = { onSaveToApp(action, message.text) },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669)),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Save, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(text = "Kaydet", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -489,26 +512,23 @@ private fun ChatBubbleItem(
 }
 
 /**
- * Maarif Modeli ve Tarih Öğretmeni zekasını simüle eden yanıt üretici
+ * Kullanıcı isteğine özel Maarif Modeli ders planı yanıtı
  */
-fun generateMaarifHistoryResponse(query: String, grade: Int): String {
-    val q = query.lowercase()
-    return when {
-        q.contains("anlat") || q.contains("ders") || q.contains("konu") -> {
-            val story = MaarifCurriculumData.getStoryNarrativeForGrade(grade)
-            "${story.topicTitle} konusunu Maarif Modeli çerçevesinde hikâyeleştirerek ele alalım:\n\n${story.narrativeStory}\n\n${story.historicalAnecdoteOrHumor}\n\n${story.concludingCoupletOrPoem}"
+fun generateMaarifCustomPlanResponse(query: String, grade: Int, profile: TeacherProfile): String {
+    val plan = MaarifCurriculumData.generateMultiHourDailyPlan(grade, profile.defaultWeeklyHours, profile)
+    return buildString {
+        append("📋 **${grade}. SINIF ÖZEL GÜNLÜK DERS PLANI (${profile.defaultWeeklyHours} SAAT)**\n")
+        append("🏫 **Kurum:** ${profile.schoolName}  |  **Tarih Öğretmeni:** ${profile.teacherName}\n")
+        append("🎯 **Talep Edilen Konu:** $query\n")
+        append("📖 **Maarif Teması:** ${plan.themeName}\n\n")
+        plan.lessonHours.forEach { h ->
+            append("📌 **${h.hourNumber}. DERS SAATİ:** ${h.hourTitle}\n")
+            append("• **Öğrenme Çıktısı:** ${h.learningOutcomes}\n")
+            append("• **Güdüleme / Nükte:** ${h.hookAndMotivation}\n")
+            append("• **İşleniş:** ${h.instructionalProcess}\n")
+            append("• **Çıkış Kartı:** ${h.evaluationAndExitTicket}\n\n")
         }
-        q.contains("plan") || q.contains("yıllık") || q.contains("günlük") -> {
-            "$grade. Sınıf Maarif Modeli planlama motoru hazır! 'Tarihsel Sorgulama' ve 'Kanıt Kullanma' alan becerileriyle eşleştirilmiş 5E günlük planınızı veya 36 haftalık yıllık planınızı tek tıkla A4 formatında yazdırabilirsiniz."
-        }
-        q.contains("sınav") || q.contains("yazılı") || q.contains("soru") || q.contains("rubrik") -> {
-            "MEB Ölçme ve Değerlendirme Yönetmeliği gereğince hazırlanan $grade. Sınıf açık uçlu, öncüllü ve analitik rubrikli ortak sınav kağıdınız hazır. Sınav senaryosu kazanım dağılım tablosuna tam uyumludur."
-        }
-        q.contains("geçme") || q.contains("kaldı") || q.contains("zayıf") || q.contains("yönetmelik") -> {
-            "Ortaöğretim Kurumları Yönetmeliği Madde 56'ya göre; öğrencinin yıl sonu ağırlıklı not ortalaması en az 50 olursa doğrudan geçer. En fazla 3 dersten zayıfı olan sorumlu geçer. Ancak alt sınıflar dahil toplam 6 zayıfı aşan öğrenci sınıf tekrarına kalır."
-        }
-        else -> {
-            "Tarih, geçmişin donuk bir aynası değil; geleceğin rehberidir! $grade. Sınıf Maarif Modeli müfredatında yer alan temalar, etkinlikler, beyitler ve resmî planlama için emrinizdeyim."
-        }
+        append("✨ **Farklılaştırılmış Öğretim:** ${plan.differentiatedInstruction}\n")
+        append("✍️ **İmzalar:** ${profile.teacherName} (Tarih Öğretmeni)  •  ${profile.principalName} (Okul Müdürü)")
     }
 }
