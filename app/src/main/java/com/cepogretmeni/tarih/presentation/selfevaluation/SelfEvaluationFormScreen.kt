@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -25,7 +26,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cepogretmeni.tarih.domain.model.CompetencyLevel
@@ -36,7 +36,7 @@ import com.cepogretmeni.tarih.domain.model.HistorySkill
  * Türkiye Yüzyılı Maarif Modeli - Öğrenci Öz Değerlendirme Formu UI Bileşeni
  * Material 3, Vibrant 3D Gölgelendirme, Kök Değer Rozetleri ve Süreç Odaklı Yetkinlik Takibi
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SelfEvaluationFormScreen(
     topicTitle: String = "İlk ve Orta Çağlarda Türk Dünyasında Devlet ve Toplum",
@@ -417,6 +417,7 @@ private fun VibrantProgressCard(
 /**
  * Erdem-Değer-Eylem Kök Değer Seçim Kartı
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CoreValuesSelectorCard(
     selectedValues: List<CoreValue>,

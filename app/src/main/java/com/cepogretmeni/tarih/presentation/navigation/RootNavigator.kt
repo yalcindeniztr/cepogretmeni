@@ -29,6 +29,7 @@ enum class ScreenTab { ASSISTANT, SELF_EVALUATION }
 fun RootNavigator(activity: FragmentActivity) {
     var isAuthenticated by remember { mutableStateOf(false) }
     var currentTab by remember { mutableStateOf(ScreenTab.ASSISTANT) }
+    var selectedGrade by remember { mutableIntStateOf(9) }
 
     val biometricAuthManager = remember { BiometricAuthManager(activity) }
     val pdfExportEngine = remember { PdfExportEngine(activity) }
@@ -95,7 +96,7 @@ fun RootNavigator(activity: FragmentActivity) {
                         biometricAuthManager.authenticate(
                             activity = activity,
                             onSuccess = { isAuthenticated = true },
-                            onError = { _, _ -> isAuthenticated = true /* Test / Fallback */ },
+                            onError = { _, _ -> isAuthenticated = true /* Test Fallback */ },
                             onFailed = {}
                         )
                     },
@@ -147,16 +148,19 @@ fun RootNavigator(activity: FragmentActivity) {
                 when (currentTab) {
                     ScreenTab.ASSISTANT -> {
                         RealtimeTeacherAssistantScreen(
-                            onExportPdfAction = { actionType ->
+                            selectedGrade = selectedGrade,
+                            onGradeChange = { selectedGrade = it },
+                            onExportPdfAction = { actionType, grade ->
                                 when (actionType) {
+                                    AssistantActionType.STORY_NARRATIVE -> {}
                                     AssistantActionType.DAILY_PLAN -> {
                                         val samplePlan = MaarifCurriculumData.getSampleDailyLessonPlan()
-                                        // PDF Export
+                                        // Günlük Plan PDF Çıktısı
                                     }
                                     AssistantActionType.ANNUAL_PLAN -> {
-                                        val annualPlan = MaarifCurriculumData.getSample9thGradeAnnualPlan()
-                                        val pdf = documentExportService.exportAnnualPlanPdf(annualPlan, 9)
-                                        pdfExportEngine.printDocument("9_Sinif_Yillik_Plan", pdf)
+                                        val annualPlan = MaarifCurriculumData.getFullAnnualPlan(grade)
+                                        val pdf = documentExportService.exportAnnualPlanPdf(annualPlan, grade)
+                                        pdfExportEngine.printDocument("${grade}_Sinif_Yillik_Plan", pdf)
                                     }
                                     AssistantActionType.ZUMRE_RECORD -> {
                                         val zumre = MaarifCurriculumData.getSampleZumreMeetingRecord()
@@ -166,7 +170,7 @@ fun RootNavigator(activity: FragmentActivity) {
                                     AssistantActionType.EXAM_PAPER -> {
                                         val exam = MaarifCurriculumData.getSampleMebExamPaper()
                                         val pdf = documentExportService.exportExamPaperPdf(exam)
-                                        pdfExportEngine.printDocument("9_Sinif_Ortak_Sinav", pdf)
+                                        pdfExportEngine.printDocument("${grade}_Sinif_Ortak_Sinav", pdf)
                                     }
                                     AssistantActionType.REGULATION_GUIDE -> {}
                                 }
@@ -178,8 +182,9 @@ fun RootNavigator(activity: FragmentActivity) {
                     }
                     ScreenTab.SELF_EVALUATION -> {
                         SelfEvaluationFormScreen(
+                            gradeLevel = selectedGrade,
                             onExportPdf = {
-                                // PDF Yazdırma Motoru Çağrısı
+                                // PDF Yazdırma Motoru
                             }
                         )
                     }
